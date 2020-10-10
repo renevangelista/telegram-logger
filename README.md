@@ -24,6 +24,22 @@ Set a new channel in the <b>config/logging.php</b> file, with the following vari
 
 Where <b>token</b> is the token of your Telegram bot and <b>chat_id</b> is where the bot will send the messages
 
+If you want your Telegram bot to send log messages for more than one chat at the same time, you can write the channel settings like this:
+
+```php
+'telegram' => [
+    'driver'  => 'custom',
+    'via'     => Logger\TelegramLogger::class,
+    'level'   => 'debug',
+    'token'   => '<YOUR_BOT_TOKEN>',
+    'chat_id' => [
+        '<CHAT_ID_1>',
+        '<CHAT_ID_2>',
+        '<CHAT_ID_3>'
+    ]
+]
+``` 
+
 
 If your default log channel is a stack, you can add it to the <b>stack</b> channel like this:
 ```php
