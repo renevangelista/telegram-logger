@@ -22,7 +22,7 @@ class TelegramHandler extends AbstractProcessingHandler
     /**
      * Chat id for bot
      *
-     * @var int
+     * @var array
      */
     private $chatId;
 
@@ -51,8 +51,13 @@ class TelegramHandler extends AbstractProcessingHandler
         parent::__construct($level, true);
 
         // define variables for making Telegram request
-        $this->botToken = $config['bot_token'];
-        $this->chatId = $config['chat_id'];
+        $this->botToken = $config['token'];
+
+        if (is_array($config['chat_id'])) {
+            $this->chatId = $config['chat_id'];
+        } else {
+            $this->chatId[] = $config['chat_id'];
+        }
 
         // define variables for text message
         $this->appName = config('app.name');
@@ -68,19 +73,22 @@ class TelegramHandler extends AbstractProcessingHandler
             throw new \InvalidArgumentException('Bot token or chat id is not defined for Telegram logger');
         }
 
-        // trying to make request and send notification
-        try {
-            file_get_contents(
-                'https://api.telegram.org/bot' . $this->botToken . '/sendMessage?'
-                . http_build_query([
-                    'text' => $this->formatText($record['formatted'], $record['level_name']),
-                    'chat_id' => $this->chatId,
-                    'parse_mode' => 'html'
-                ])
-            );
-        } catch (Exception $exception) {
-            \Log::channel('single')->error($exception->getMessage());
+        foreach ($this->chatId as $chatId) {
+            // trying to make request and send notification
+            try {
+                file_get_contents(
+                    'https://api.telegram.org/bot' . $this->botToken . '/sendMessage?'
+                    . http_build_query([
+                        'text' => $this->formatText($record['formatted'], $record['level_name']),
+                        'chat_id' => $chatId,
+                        'parse_mode' => 'html'
+                    ])
+                );
+            } catch (Exception $exception) {
+                \Log::channel('single')->error($exception->getMessage());
+            }
         }
+
     }
 
     /**
