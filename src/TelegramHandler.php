@@ -41,6 +41,13 @@ class TelegramHandler extends AbstractProcessingHandler
     private $appEnv;
 
     /**
+     * Application timezone
+     *
+     * @string
+     */
+    private $timezone;
+
+    /**
      * TelegramHandler constructor.
      * @param array $config
      */
@@ -62,6 +69,7 @@ class TelegramHandler extends AbstractProcessingHandler
         // define variables for text message
         $this->appName = config('app.name');
         $this->appEnv = config('app.env');
+        $this->timezone = config('app.timezone');
     }
 
     /**
@@ -79,7 +87,7 @@ class TelegramHandler extends AbstractProcessingHandler
                 file_get_contents(
                     'https://api.telegram.org/bot' . $this->botToken . '/sendMessage?'
                     . http_build_query([
-                        'text' => $this->formatText($record['formatted'], $record['level_name']),
+                        'text' => $this->formatText($record),
                         'chat_id' => $chatId,
                         'parse_mode' => 'html'
                     ])
@@ -96,8 +104,33 @@ class TelegramHandler extends AbstractProcessingHandler
      * @param string $level
      * @return string
      */
-    private function formatText(string $text, string $level): string
+    private function formatText(array $record): string
     {
-        return '<b>' . $this->appName . '</b> (' . $level . ')' . PHP_EOL . 'Env: ' . $this->appEnv . PHP_EOL . $text;
+        try {
+            $dateTime = $record['datetime'];
+            $dateTime->setTimezone(new \DateTimeZone( $this->timezone ));
+
+            $exLevel = strtolower($record['level_name']);
+            $textError = $record['message'];
+
+            $message = '';
+            $message .= "{$dateTime->format('Y-m-d H:i:s')} " . PHP_EOL;
+            $message .= "<strong>{$this->appName}</strong> (<code>{$exLevel}</code>)" . PHP_EOL;
+            $message .= "Environment: {$this->appEnv}" . PHP_EOL . PHP_EOL;
+            $message .= "{$textError}" . PHP_EOL;
+
+            if (!empty($record['context'])) {
+                $exception = $record['context']['exception'];
+                $fileName = $exception->getFile();
+                $fileLine = $exception->getLine();
+                $message .= "File: {$fileName}:{$fileLine}" . PHP_EOL;
+                $message .= "Message: {$exception->getMessage()}";
+            }
+        } catch (Exception $exception) {
+            $message = "Unable to get formatted error due to error: {$exception->getMessage()}" . PHP_EOL . PHP_EOL;
+            $message .= json_encode($record);
+        }
+
+        return $message;
     }
 }
